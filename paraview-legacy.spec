@@ -4,10 +4,9 @@
 %{!?build_openmpi:%global build_openmpi 1}
 %{!?build_mpich:%global build_mpich 1}
 %global pv_maj 5
-%global pv_min 2
+%global pv_min 3
 %global pv_patch 0
 %global pv_majmin %{pv_maj}.%{pv_min}
-#global rcver RC4
 
 # VTK currently is carrying local modifications to gl2ps
 %bcond_with gl2ps
@@ -22,6 +21,13 @@
 %else
 %global system_jsoncpp 0
 %global vtk_use_system_jsoncpp -DVTK_USE_SYSTEM_JSONCPP:BOOL=OFF
+%endif
+
+%bcond_without protobuf
+%if %{with protobuf}
+%global vtk_use_system_protobuf -DVTK_USE_SYSTEM_PROTOBUF:BOOL=ON
+%else
+%global vtk_use_system_protobuf -DVTK_USE_SYSTEM_PROTOBUF:BOOL=OFF
 %endif
 
 # We need pugixml >= 1.4
@@ -46,9 +52,6 @@ Source1:        paraview.xml
 # Fix Version in desktop file
 # http://www.paraview.org/Bug/view.php?id=12508
 Patch0:         paraview-desktop.patch
-# Unbundle eigen
-# https://bugzilla.redhat.com/show_bug.cgi?id=1251289
-Patch1:         paraview-eigen.patch
 
 %if 0%{?rhel} && 0%{?rhel} <= 7
 BuildRequires:  cmake3
@@ -82,7 +85,9 @@ BuildRequires:  libpng-devel
 BuildRequires:  libtheora-devel
 BuildRequires:  libxml2-devel
 BuildRequires:  netcdf-cxx-devel
+%if %{with protobuf}
 BuildRequires:  protobuf-devel
+%endif
 %if %{system_pugixml}
 BuildRequires:  pugixml-devel >= 1.4
 %endif
@@ -127,6 +132,10 @@ Provides: bundled(kwsys-systemtools)
 %if !0%{system_jsoncpp}
 Provides: bundled(jsoncpp) = 0.7.0
 %endif
+# Bundled protobuf
+%if !%{with protobuf}
+Provides: bundled(protobuf) = 2.3.0
+%endif
 # Bundled vtk
 # https://bugzilla.redhat.com/show_bug.cgi?id=697842
 Provides: bundled(vtk) = 6.3.0
@@ -136,14 +145,11 @@ Provides: bundled(libproj4)
 Provides: bundled(qttesting)
 Provides: bundled(xdmf2)
 
-# Setup _pkgdocdir if not defined already.
-%{!?_pkgdocdir:%global _pkgdocdir %{_docdir}/%{name}-%{version}}
-
 # Do not provide anything in paraview's library directory
 %global __provides_exclude_from ^(%{_libdir}/paraview/|%{_libdir}/.*/lib/paraview/).*$
 # Do not require anything provided in paraview's library directory
 # This list needs to be maintained by hand
-%global __requires_exclude ^lib(IceT|QtTesting|vtk).*$
+%global __requires_exclude ^lib(IceT|QtTesting|vtk%{!?_with_protobuf:|protobuf}).*$
 
 
 #-- Plugin: VRPlugin - Virtual Reality Devices and Interactor styles : Disabled - Requires VRPN
@@ -187,7 +193,7 @@ Provides: bundled(xdmf2)
         -DVTK_USE_SYSTEM_LIBPROJ4=OFF \\\
         -DVTK_USE_SYSTEM_MPI4PY:BOOL=ON \\\
         -DVTK_USE_SYSTEM_NETCDF=ON \\\
-        -DVTK_USE_SYSTEM_PROTOBUF:BOOL=ON \\\
+	%{?vtk_use_system_protobuf} \\\
         %{?vtk_use_system_pugixml} \\\
         -DVTK_USE_SYSTEM_PYGMENTS:BOOL=ON \\\
         -DVTK_USE_SYSTEM_QTTESTING=OFF \\\
@@ -195,8 +201,8 @@ Provides: bundled(xdmf2)
         -DVTK_USE_SYSTEM_TWISTED:BOOL=ON \\\
         -DVTK_USE_SYSTEM_XDMF2=OFF \\\
         -DVTK_USE_SYSTEM_ZOPE:BOOL=ON \\\
+	-DVTK_LEGACY_SILENT:BOOL=ON \\\
         -DXDMF_WRAP_PYTHON:BOOL=ON \\\
-        -DBUILD_DOCUMENTATION:BOOL=ON \\\
         -DBUILD_EXAMPLES:BOOL=ON \\\
         -DBUILD_TESTING:BOOL=OFF \\\
         -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON
@@ -346,18 +352,17 @@ developing applications that use %{name}-mpich.
 %prep
 %setup -q -n ParaView-v%{version}%{?rcver:-%rcver}
 %patch0 -p1 -b .desktop
-%patch1 -p1 -b .eigen
 # Install python properly
 sed -i -s '/VTK_INSTALL_PYTHON_USING_CMAKE/s/TRUE/FALSE/' CMakeLists.txt
 #Remove included thirdparty sources just to be sure
-for x in vtklz4 vtkprotobuf vtkpygments
+for x in %{?_with_protobuf:vtkprotobuf} vtkpygments
 do
   rm -r ThirdParty/*/${x}
 done
 %if %{system_pugixml}
 rm ThirdParty/pugixml/pugixml.*
 %endif
-for x in autobahn vtkexpat vtkfreetype %{?_with_gl2ps:vtkgl2ps} vtkhdf5 vtkjpeg vtklibxml2 vtkmpi4py vtknetcdf vtkoggtheora vtkpng vtksqlite vtktiff twisted vtkzlib zope
+for x in autobahn vtkexpat vtkfreetype %{?_with_gl2ps:vtkgl2ps} vtkhdf5 vtkjpeg vtklibxml2 vtklz4 vtkmpi4py vtknetcdf vtkoggtheora vtkpng vtksqlite vtktiff twisted vtkzlib zope
 do
   rm -r VTK/ThirdParty/*/${x}
 done
@@ -366,7 +371,6 @@ done
 rm -r VTK/ThirdParty/jsoncpp/vtkjsoncpp
 %endif
 # Eigen
-rm -r Plugins/SciberQuestToolKit/eigen-*
 # Remove unused KWSys items
 find VTK/Utilities/KWSys/vtksys/ -name \*.[ch]\* | grep -vE '^VTK/Utilities/KWSys/vtksys/([a-z].*|Configure|SharedForward|String\.hxx|Base64|CommandLineArguments|Directory|DynamicLoader|Encoding|FStream|FundamentalType|Glob|MD5|Process|RegularExpression|System|SystemInformation|SystemTools)(C|CXX|UNIX)?\.' | xargs rm
 # Work around gcc 4.9.0 regression
@@ -380,6 +384,7 @@ sed -i -e 's/-Wl,--fatal-warnings//' VTK/CMake/vtkCompilerExtras.cmake
 mkdir %{_target_platform}
 pushd %{_target_platform}
 %cmake3 .. \
+	-DBUILD_DOCUMENTATION:BOOL=ON \
         -DVTK_INSTALL_INCLUDE_DIR:PATH=include/paraview \
         -DVTK_INSTALL_ARCHIVE_DIR:PATH=%{_lib}/paraview \
         -DVTK_INSTALL_LIBRARY_DIR:PATH=%{_lib}/paraview \
@@ -388,6 +393,7 @@ pushd %{_target_platform}
         -DQtTesting_INSTALL_CMAKE_DIR=%{_lib}/paraview/CMake \
         %{paraview_cmake_options}
 %make_build
+%make_build DoxygenDoc ParaViewDoc
 popd
 %if %{build_openmpi}
 mkdir %{_target_platform}-openmpi
@@ -480,12 +486,6 @@ find %{buildroot} -name VTKConfig.cmake | xargs sed -i -e '/builddir/s/^/#/'
 
 # Build autodocs and move documentation-files to proper location
 mkdir -p %{buildroot}%{_pkgdocdir}
-export LD_LIBRARY_PATH="%{buildroot}%{_libdir}:%{_libdir}"
-export PYTHONPATH="%{buildroot}%{_libdir}/%{name}/site-packages:${PYTHONPATH}"
-export PYTHONPATH="${PYTHONPATH%:}:%{python2_sitearch}/mpich"
-%make_build ParaViewDoc -C %{_target_platform}
-unset LD_LIBRARY_PATH
-unset PYTHONPATH
 install -pm 0644 README.md %{buildroot}%{_pkgdocdir}
 mv %{buildroot}%{_docdir}/paraview-%{pv_majmin}/* %{buildroot}%{_pkgdocdir}
 rm -rf %{buildroot}%{_docdir}/paraview-%{pv_majmin}
@@ -591,6 +591,12 @@ update-mime-database \
 
 
 %changelog
+* Tue Mar 28 2017 Alexey Matveichev - 5.3.0-3
+- Silencing deprecation warnings
+
+* Sat Mar 18 2017 Alexey Matveichev - 5.3.0-2
+- Update to 5.3.0
+
 * Thu Nov 17 2016 Orion Poplawski <orion@cora.nwra.com> - 5.2.0-1
 - Update to 5.2.0 final
 
