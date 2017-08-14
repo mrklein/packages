@@ -48,7 +48,7 @@ Summary:        Parallel visualization application (legacy OpenGL backend)
 License:        BSD
 URL:            http://www.paraview.org/
 Source0:        http://www.paraview.org/files/v%{pv_majmin}/ParaView-v%{version}%{?rcver:-%rcver}.tar.gz
-Source1:        paraview.xml
+Source1:        https://raw.githubusercontent.com/mrklein/packages/master/paraview-legacy/paraview.xml
 
 %if 0%{?rhel} && 0%{?rhel} <= 7
 BuildRequires:  cmake3
