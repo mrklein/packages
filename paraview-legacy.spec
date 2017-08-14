@@ -4,9 +4,10 @@
 %{!?build_openmpi:%global build_openmpi 1}
 %{!?build_mpich:%global build_mpich 1}
 %global pv_maj 5
-%global pv_min 3
+%global pv_min 4
 %global pv_patch 0
 %global pv_majmin %{pv_maj}.%{pv_min}
+#global rcver RC3
 
 # VTK currently is carrying local modifications to gl2ps
 %bcond_with gl2ps
@@ -15,7 +16,7 @@
 %endif
 
 # We need jsoncpp >= 0.7
-%if 0%{?fedora} || 0%{?rhel} >= 8
+%if ( 0%{?fedora} && 0%{?fedora} >= 25 ) || 0%{?rhel} >= 8
 %global system_jsoncpp 1
 %global vtk_use_system_jsoncpp -DVTK_USE_SYSTEM_JSONCPP:BOOL=ON
 %else
@@ -41,17 +42,13 @@
 
 Name:           paraview-legacy
 Version:        %{pv_majmin}.%{pv_patch}
-Release:        3%{?rcver:.%rcver}%{?dist}
+Release:        1%{?rcver:.%rcver}%{?dist}
 Summary:        Parallel visualization application (legacy OpenGL backend)
 
 License:        BSD
 URL:            http://www.paraview.org/
 Source0:        http://www.paraview.org/files/v%{pv_majmin}/ParaView-v%{version}%{?rcver:-%rcver}.tar.gz
 Source1:        paraview.xml
-
-# Fix Version in desktop file
-# http://www.paraview.org/Bug/view.php?id=12508
-Patch0:         paraview-desktop.patch
 
 %if 0%{?rhel} && 0%{?rhel} <= 7
 BuildRequires:  cmake3
@@ -65,6 +62,10 @@ BuildRequires:  qt-devel
 BuildRequires:  qt-webkit-devel
 BuildRequires:  mesa-libOSMesa-devel
 BuildRequires:  python-devel, tk-devel, hdf5-devel
+BuildRequires:  cgnslib-devel
+# Fails looking for PythonQt_QtBindings.h
+# https://gitlab.kitware.com/paraview/paraview/issues/17365
+#BuildRequires:  pythonqt-devel
 BuildRequires:  freetype-devel, libtiff-devel, zlib-devel
 BuildRequires:  expat-devel
 BuildRequires:  readline-devel
@@ -80,6 +81,8 @@ BuildRequires:  hwloc-devel
 %if %{system_jsoncpp}
 BuildRequires:  jsoncpp-devel >= 0.7.0
 %endif
+# Requires patched libharu https://github.com/libharu/libharu/pull/157
+#BuildRequires:  libharu-devel
 BuildRequires:  libjpeg-devel
 BuildRequires:  libpng-devel
 BuildRequires:  libtheora-devel
@@ -101,13 +104,18 @@ Requires:       hdf5 = %{_hdf5_version}
 Requires:       %{name}-data = %{version}-%{release}
 Requires:       python-pygments
 Requires:       python-six
+Requires:       python-pygments
+Requires:       python-six
+%if 0%{?rhel} && 0%{?rhel} <= 7
+Requires:       numpy
+Requires:       python-twisted-core
+%else
 Requires:       python2-autobahn
 Requires:       python2-numpy
 Requires:       python2-twisted
+%endif
 
 Obsoletes:      paraview-demos < 3.2.1-4
-
-Conflicts:	paraview = %{version}
 
 Provides:       paraview-demos = %{version}-%{release}
 
@@ -141,6 +149,7 @@ Provides: bundled(protobuf) = 2.3.0
 Provides: bundled(vtk) = 6.3.0
 Provides: bundled(diy2)
 Provides: bundled(icet)
+Provides: bundled(libharu)
 Provides: bundled(libproj4)
 Provides: bundled(qttesting)
 Provides: bundled(xdmf2)
@@ -163,49 +172,58 @@ Provides: bundled(xdmf2)
 
 %global paraview_cmake_options \\\
         -DCMAKE_BUILD_TYPE=RelWithDebInfo \\\
-        -DEigen_DIR:FILEPATH=%{_includedir}/eigen3 \\\
         -DTCL_LIBRARY:PATH=tcl \\\
-        -DTK_LIBRARY:PATH=tk \\\
         -DPARAVIEW_BUILD_PLUGIN_AdiosReader:BOOL=ON \\\
-        -DPARAVIEW_BUILD_PLUGIN_CoProcessingScriptGenerator:BOOL=ON \\\
         -DPARAVIEW_BUILD_PLUGIN_EyeDomeLighting:BOOL=ON \\\
-        -DPARAVIEW_BUILD_PLUGIN_ForceTime:BOOL=ON \\\
         -DPARAVIEW_ENABLE_PYTHON:BOOL=ON \\\
-        -DPARAVIEW_INSTALL_THIRD_PARTY_LIBRARIES:BOOL=OFF \\\
-        -DPARAVIEW_INSTALL_DEVELOPMENT:BOOL=ON \\\
+        -DPARAVIEW_QT_VERSION:STRING="4" \\\
         -DPARAVIEW_WWW_DIR=%{buildroot}%{_pkgdocdir} \\\
+        -DPYTHONQT_DIR=/usr \\\
         -DVTK_CUSTOM_LIBRARY_SUFFIX="" \\\
         -DVTK_INSTALL_DATA_DIR=share/paraview \\\
         -DVTK_INSTALL_PACKAGE_DIR=share/cmake/paraview \\\
         -DVTK_PYTHON_SETUP_ARGS="--prefix=/usr --root=%{buildroot}" \\\
         -DVTK_RENDERING_BACKEND:STRING=OpenGL \\\
-        -DVTK_USE_BOOST:BOOL=ON \\\
-        -DVTK_USE_INFOVIS:BOOL=OFF \\\
-        -DVTK_USE_N_WAY_ARRAYS:BOOL=ON \\\
         -DVTK_USE_OGGTHEORA_ENCODER:BOOL=ON \\\
-        -DVTK_USE_SYSTEM_DIY2=OFF \\\
-        -DVTK_USE_SYSTEM_ICET=OFF \\\
         -DVTK_USE_SYSTEM_LIBRARIES=ON \\\
-        -DVTK_USE_SYSTEM_HDF5=ON \\\
+%if 0%{?rhel} && 0%{?rhel} <= 7 \
+        -DVTK_USE_SYSTEM_AUTOBAHN:BOOL=OFF \\\
+%else \
         -DVTK_USE_SYSTEM_AUTOBAHN:BOOL=ON \\\
+%endif \
+        -DVTK_USE_SYSTEM_HDF5=ON \\\
+        -DVTK_USE_SYSTEM_LIBHARU=OFF \\\
         %{?vtk_use_system_gl2ps} \\\
         %{?vtk_use_system_jsoncpp} \\\
-        -DVTK_USE_SYSTEM_LIBPROJ4=OFF \\\
-        -DVTK_USE_SYSTEM_MPI4PY:BOOL=ON \\\
         -DVTK_USE_SYSTEM_NETCDF=ON \\\
-	%{?vtk_use_system_protobuf} \\\
+        %{?vtk_use_system_protobuf} \\\
         %{?vtk_use_system_pugixml} \\\
         -DVTK_USE_SYSTEM_PYGMENTS:BOOL=ON \\\
         -DVTK_USE_SYSTEM_QTTESTING=OFF \\\
-        -DVTK_USE_SYSTEM_SIX.PY:BOOL=ON \\\
         -DVTK_USE_SYSTEM_TWISTED:BOOL=ON \\\
         -DVTK_USE_SYSTEM_XDMF2=OFF \\\
         -DVTK_USE_SYSTEM_ZOPE:BOOL=ON \\\
-	-DVTK_LEGACY_SILENT:BOOL=ON \\\
         -DXDMF_WRAP_PYTHON:BOOL=ON \\\
         -DBUILD_EXAMPLES:BOOL=ON \\\
         -DBUILD_TESTING:BOOL=OFF \\\
         -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON
+
+%global paraview_cmake_mpi_options \\\
+        -DCMAKE_PREFIX_PATH:PATH=$MPI_HOME \\\
+        -DCMAKE_INSTALL_PREFIX:PATH=$MPI_HOME \\\
+        -DHDF5_INCLUDE_DIRS:PATH=$MPI_INCLUDE \\\
+        -DVTK_INSTALL_INCLUDE_DIR:PATH=include/paraview \\\
+        -DVTK_INSTALL_ARCHIVE_DIR:PATH=lib/paraview \\\
+        -DVTK_INSTALL_LIBRARY_DIR:PATH=lib/paraview \\\
+        -DVTK_USE_SYSTEM_DIY2=OFF \\\
+        -DVTK_USE_SYSTEM_ICET=OFF \\\
+        -DVTK_USE_SYSTEM_MPI4PY:BOOL=ON \\\
+        -DPARAVIEW_INSTALL_DEVELOPMENT_FILES:BOOL=ON \\\
+        -DQtTesting_INSTALL_LIB_DIR=lib/paraview \\\
+        -DQtTesting_INSTALL_CMAKE_DIR=lib/paraview/CMake \\\
+        -DPARAVIEW_USE_MPI:BOOL=ON \\\
+        -DICET_BUILD_TESTING:BOOL=ON \\\
+        %{paraview_cmake_options}
 
 %description
 ParaView is an application designed with the need to visualize large data
@@ -259,11 +277,17 @@ Summary:        Documentation files for ParaView
 BuildRequires:  doxygen
 BuildRequires:  graphviz
 BuildRequires:  hardlink
-BuildRequires:  python2-autobahn
 BuildRequires:  python2-devel
+%if 0%{?rhel} && 0%{?rhel} <= 7
+BuildRequires:  numpy
+BuildRequires:  python-sphinx
+BuildRequires:  python-twisted-core
+%else
+BuildRequires:  python2-autobahn
 BuildRequires:  python2-numpy
 BuildRequires:  python2-sphinx
 BuildRequires:  python2-twisted
+%endif
 
 BuildArch:      noarch
 
@@ -351,26 +375,27 @@ developing applications that use %{name}-mpich.
 
 %prep
 %setup -q -n ParaView-v%{version}%{?rcver:-%rcver}
-%patch0 -p1 -b .desktop
 # Install python properly
 sed -i -s '/VTK_INSTALL_PYTHON_USING_CMAKE/s/TRUE/FALSE/' CMakeLists.txt
 #Remove included thirdparty sources just to be sure
-for x in %{?_with_protobuf:vtkprotobuf} vtkpygments
+for x in vtkcgns %{?_with_protobuf:vtkprotobuf} vtkpygments
 do
   rm -r ThirdParty/*/${x}
 done
 %if %{system_pugixml}
 rm ThirdParty/pugixml/pugixml.*
 %endif
-for x in autobahn vtkexpat vtkfreetype %{?_with_gl2ps:vtkgl2ps} vtkhdf5 vtkjpeg vtklibxml2 vtklz4 vtkmpi4py vtknetcdf vtkoggtheora vtkpng vtksqlite vtktiff twisted vtkzlib zope
+for x in vtkexpat vtkfreetype %{?_with_gl2ps:vtkgl2ps} vtkhdf5 vtkjpeg vtklibxml2 vtklz4 vtkmpi4py vtknetcdf{,cpp} vtkoggtheora vtkpng vtksqlite vtktiff vtkTwisted vtkzlib vtkZopeInterface
 do
   rm -r VTK/ThirdParty/*/${x}
 done
+%if 0%{?fedora} || 0%{?rhel} >= 8
+rm -r VTK/ThirdParty/*/autobahn
+%endif
 # jsoncpp
 %if 0%{system_jsoncpp}
 rm -r VTK/ThirdParty/jsoncpp/vtkjsoncpp
 %endif
-# Eigen
 # Remove unused KWSys items
 find VTK/Utilities/KWSys/vtksys/ -name \*.[ch]\* | grep -vE '^VTK/Utilities/KWSys/vtksys/([a-z].*|Configure|SharedForward|String\.hxx|Base64|CommandLineArguments|Directory|DynamicLoader|Encoding|FStream|FundamentalType|Glob|MD5|Process|RegularExpression|System|SystemInformation|SystemTools)(C|CXX|UNIX)?\.' | xargs rm
 # Work around gcc 4.9.0 regression
@@ -384,7 +409,7 @@ sed -i -e 's/-Wl,--fatal-warnings//' VTK/CMake/vtkCompilerExtras.cmake
 mkdir %{_target_platform}
 pushd %{_target_platform}
 %cmake3 .. \
-	-DBUILD_DOCUMENTATION:BOOL=ON \
+        -DBUILD_DOCUMENTATION:BOOL=ON \
         -DVTK_INSTALL_INCLUDE_DIR:PATH=include/paraview \
         -DVTK_INSTALL_ARCHIVE_DIR:PATH=%{_lib}/paraview \
         -DVTK_INSTALL_LIBRARY_DIR:PATH=%{_lib}/paraview \
@@ -393,24 +418,20 @@ pushd %{_target_platform}
         -DQtTesting_INSTALL_CMAKE_DIR=%{_lib}/paraview/CMake \
         %{paraview_cmake_options}
 %make_build
+#export LD_LIBRARY_PATH="%{buildroot}%{_libdir}:%{_libdir}"
+#export PYTHONPATH="%{buildroot}%{_libdir}/%{name}/site-packages:${PYTHONPATH}"
+#export PYTHONPATH="${PYTHONPATH%:}:%{python2_sitearch}/mpich"
+export LANG=en_US.UTF-8
 %make_build DoxygenDoc ParaViewDoc
+#unset LD_LIBRARY_PATH
+#unset PYTHONPATH
 popd
 %if %{build_openmpi}
 mkdir %{_target_platform}-openmpi
 pushd %{_target_platform}-openmpi
 %{_openmpi_load}
 %cmake3 .. \
-        -DCMAKE_PREFIX_PATH:PATH=$MPI_HOME \
-        -DCMAKE_INSTALL_PREFIX:PATH=$MPI_HOME \
-        -DVTK_INSTALL_INCLUDE_DIR:PATH=include/paraview \
-        -DVTK_INSTALL_ARCHIVE_DIR:PATH=lib/paraview \
-        -DVTK_INSTALL_LIBRARY_DIR:PATH=lib/paraview \
-        -DPARAVIEW_INSTALL_DEVELOPMENT_FILES:BOOL=ON \
-        -DQtTesting_INSTALL_LIB_DIR=lib/paraview \
-        -DQtTesting_INSTALL_CMAKE_DIR=lib/paraview/CMake \
-        -DPARAVIEW_USE_MPI:BOOL=ON \
-        -DICET_BUILD_TESTING:BOOL=ON \
-        %{paraview_cmake_options}
+        %{paraview_cmake_mpi_options}
 # Fixup forward paths
 sed -i -e 's,../%{_lib}/openmpi,..,' `find -name \*-forward.c`
 %make_build
@@ -425,17 +446,7 @@ pushd %{_target_platform}-mpich
 # https://bugzilla.redhat.com/show_bug.cgi?id=1148992
 [ -z "$PYTHONPATH" ] && export PYTHONPATH=$MPI_PYTHON_SITEARCH
 %cmake3 .. \
-        -DCMAKE_PREFIX_PATH:PATH=$MPI_HOME \
-        -DCMAKE_INSTALL_PREFIX:PATH=$MPI_HOME \
-        -DVTK_INSTALL_INCLUDE_DIR:PATH=include/paraview \
-        -DVTK_INSTALL_ARCHIVE_DIR:PATH=lib/paraview \
-        -DVTK_INSTALL_LIBRARY_DIR:PATH=lib/paraview \
-        -DPARAVIEW_INSTALL_DEVELOPMENT_FILES:BOOL=ON \
-        -DQtTesting_INSTALL_LIB_DIR=lib/paraview \
-        -DQtTesting_INSTALL_CMAKE_DIR=lib/paraview/CMake \
-        -DPARAVIEW_USE_MPI:BOOL=ON \
-        -DICET_BUILD_TESTING:BOOL=ON \
-        %{paraview_cmake_options}
+        %{paraview_cmake_mpi_options}
 # Fixup forward paths
 sed -i -e 's,../%{_lib}/mpich,..,' `find -name \*-forward.c`
 %make_build
@@ -479,7 +490,8 @@ appstream-util validate-relax --nonet %{buildroot}/%{_datadir}/appdata/*.appdata
 %endif
 
 #Cleanup only vtk conflicting binaries
-rm %{buildroot}%{_bindir}/vtk{EncodeString,HashSource,LegacyColorMapXMLToJSON,Parse{Java,OGLExt},Wrap{Hierarchy,Java,Python,Tcl}}*
+rm %{buildroot}%{_bindir}/vtk{EncodeString,HashSource,LegacyColorMapXMLToJSON,ParseJava,Wrap{Hierarchy,Java,Python,Tcl}}*
+rm -f %{buildroot}%{_bindir}/vtkParseOGLExt
 
 # Strip build dir from VTKConfig.cmake (bug #917425)
 find %{buildroot} -name VTKConfig.cmake | xargs sed -i -e '/builddir/s/^/#/'
@@ -591,11 +603,33 @@ update-mime-database \
 
 
 %changelog
-* Tue Mar 28 2017 Alexey Matveichev - 5.3.0-3
-- Silencing deprecation warnings
+* Fri Jun 16 2017 Orion Poplawski <orion@cora.nwra.com> - 5.4.0-1
+- Update to 5.4.0
 
-* Sat Mar 18 2017 Alexey Matveichev - 5.3.0-2
+* Mon Apr 10 2017 Orion Poplawski <orion@cora.nwra.com> - 5.3.0-2
+- Build with Qt5 on Fedora 26+ (bug #1437858)
+- Drop old cmake config options
+
+* Mon Mar 13 2017 Orion Poplawski <orion@cora.nwra.com> - 5.3.0-1
 - Update to 5.3.0
+
+* Sat Feb 11 2017 Fedora Release Engineering <releng@fedoraproject.org> - 5.2.0-5.1
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_26_Mass_Rebuild
+
+* Thu Jan 26 2017 Orion Poplawski <orion@cora.nwra.com> - 5.2.0-5
+- Rebuild with system protobuf 3.2.0
+
+* Tue Jan 10 2017 Orion Poplawski <orion@cora.nwra.com> - 5.2.0-4
+- Filter bundled protobuf from requires if needed
+
+* Sun Jan 8 2017 Orion Poplawski <orion@cora.nwra.com> - 5.2.0-3
+- Use bundled protobuf for now
+
+* Wed Dec 28 2016 Rich Mattes <richmattes@gmail.com> - 5.2.0-2
+- Rebuild for eigen3-3.3.1
+
+* Sat Nov 19 2016 Orion Poplawski <orion@cora.nwra.com> - 5.2.0-1.1
+- Rebuild for protobuf 3.1.0
 
 * Thu Nov 17 2016 Orion Poplawski <orion@cora.nwra.com> - 5.2.0-1
 - Update to 5.2.0 final
