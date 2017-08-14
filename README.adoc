@@ -1,0 +1,9 @@
+= Misc RPM SPEC files
+
+== paraview-legacy
+
+In general ParaView 5.x (where x >= 3) is build with OpenGL2 back-end, which
+does not work on old hardware (like my T410). So, the only purpose of the
+package is to have ParaView 5.x with legacy OpenGL back-end.
+
+Basically it is adaptation of SPEC file from Fedora's repository.
