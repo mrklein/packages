@@ -7,3 +7,7 @@ does not work on old hardware (like my T410). So, the only purpose of the
 package is to have ParaView 5.x with legacy OpenGL back-end.
 
 Basically it is adaptation of SPEC file from Fedora's repository.
+
+== CGAL
+
+CGAL built for EL. SPEC file from Fedora with Fedora -> EPEL substitution.
