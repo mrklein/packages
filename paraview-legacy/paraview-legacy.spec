@@ -5,7 +5,7 @@
 %{!?build_mpich:%global build_mpich 1}
 %global pv_maj 5
 %global pv_min 4
-%global pv_patch 0
+%global pv_patch 1
 %global pv_majmin %{pv_maj}.%{pv_min}
 #global rcver RC3
 
@@ -606,6 +606,9 @@ update-mime-database \
 
 
 %changelog
+* Sam Oct 28 2016 Alexey Matveichev <alexey@matveichev.com> 5.4.1-1
+- Update to 5.4.1
+
 * Fri Jun 16 2017 Orion Poplawski <orion@cora.nwra.com> - 5.4.0-1
 - Update to 5.4.0
 
