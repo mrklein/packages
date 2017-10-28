@@ -115,7 +115,7 @@ Requires:       python2-numpy
 Requires:       python2-twisted
 %endif
 %if 0%{?rhel} && 0%{?rhel} <= 7
-Requires:	protobuf
+Requires:       protobuf
 %endif
 
 Obsoletes:      paraview-demos < 3.2.1-4
@@ -606,7 +606,7 @@ update-mime-database \
 
 
 %changelog
-* Sam Oct 28 2016 Alexey Matveichev <alexey@matveichev.com> 5.4.1-1
+* Sat Oct 28 2017 Alexey Matveichev <alexey@matveichev.com> 5.4.1-1
 - Update to 5.4.1
 
 * Fri Jun 16 2017 Orion Poplawski <orion@cora.nwra.com> - 5.4.0-1
