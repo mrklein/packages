@@ -5,7 +5,7 @@
 
 # Various variables that defines the release
 %global soname 13
-%global soversion 13.0.0
+%global soversion 13.0.1
 
 Name:           CGAL
 Version:        4.11
