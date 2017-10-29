@@ -6,20 +6,16 @@
 # Various variables that defines the release
 %global soname 13
 %global soversion 13.0.0
-%global alphatag %{nil}
-#global alphatag beta2
-%global alphaname %{nil}
-#global alphaname -%{alphatag}
 
 Name:           CGAL
-Version:        4.10
-Release:        1%{alphatag}%{?dist}
+Version:        4.11
+Release:        1%{?dist}
 Summary:        Computational Geometry Algorithms Library
 
 Group:          System Environment/Libraries
 License:        LGPLv3+ and GPLv3+ and Boost
 URL:            http://www.cgal.org/
-Source0:        https://github.com/CGAL/cgal/releases/download/releases/%{name}-%{version}%{alphaname}/%{name}-%{version}%{alphaname}.tar.xz
+Source0:        https://github.com/CGAL/cgal/releases/download/releases/%{name}-%{version}/%{name}-%{version}.tar.xz
 Source10:       https://raw.githubusercontent.com/mrklein/packages/master/CGAL/CGAL-README.EPEL
 
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
@@ -57,7 +53,7 @@ Requires:       qt5-qttools-devel%{?_isa} >= %{qt_version}
 Requires:       zlib-devel%{?_isa} gmp-devel%{?_isa}
 Requires:       mpfr-devel%{?_isa}
 %description devel
-The %{name}-devel package provides the headers files and tools you may need to 
+The %{name}-devel package provides the headers files and tools you may need to
 develop applications using CGAL.
 
 
@@ -71,7 +67,7 @@ CGAL algorithms.
 
 
 %prep
-%setup -q -n %{name}-%{version}%{alphaname}
+%setup -q -n %{name}-%{version}
 
 # Fix some file permissions
 #chmod a-x include/CGAL/export/ImageIO.h
@@ -138,6 +134,9 @@ rm -rf %{buildroot}
 %exclude %{_datadir}/CGAL/*/*/skip_vcproj_auto_generation
 
 %changelog
+* Sun Oct 29 2017 Alexey Matveichev <alexey@matveichev.com> - 4.11-1
+- New upstream release
+
 * Wed May 31 2017 Laurent Rineau <lrineau@renoir.geometryfactory.com> - 4.10-1
 - New upstream release
 
@@ -436,11 +435,11 @@ rm -rf %{buildroot}
     - %%{_includedir}/CORE is now %%{_includedir}/CGAL/CORE
     - libCORE has been rename libCGALcore++
   Reasons:
-    - CGAL/OpenNL is a special version of OpenNL, rewritten for CGAL 
+    - CGAL/OpenNL is a special version of OpenNL, rewritten for CGAL
       in C++ by the OpenNL author,
-    - CGAL/CORE is a fork of CORE-1.7. CORE-1.7 is no longer maintained by 
+    - CGAL/CORE is a fork of CORE-1.7. CORE-1.7 is no longer maintained by
       its authors, and CORE-2.0 is awaited since 2004.
-  In previous releases of this package, CORE was excluded from the package, 
+  In previous releases of this package, CORE was excluded from the package,
   because %%{_includedir}/CORE/ was a name too generic (see comment #8 of
   #bug #199168). Since the headers of CORE have been moved to
   %%{_includedir}/CGAL/CORE, CORE is now shipped with CGAL.
@@ -490,7 +489,7 @@ tarball.
 - Quote 'EOF', so that the lines are not expanded by the shell.
 
 * Tue Jul  4 2006 Laurent Rineau <laurent.rineau__fedora_extras@normalesup.org> - 3.2.1-10
-- Fix makefile.sed so that %%{buildroot} does not appear in 
+- Fix makefile.sed so that %%{buildroot} does not appear in
   %%{_datadir}/CGAL/make/makefile.
 
 * Sun Jul  2 2006 Laurent Rineau <laurent.rineau__fedora_extras@normalesup.org> - 3.2.1-9
@@ -568,7 +567,7 @@ tarball.
 
 * Fri Mar 10 2006 Naceur MESKINI <nmeskini@sophia.inria.fr>
 - Adding new sub-packages doc(pdf&html) and demo.
-- Add internal_release flag. 
+- Add internal_release flag.
 
 * Thu Mar 09 2006 Naceur MESKINI <nmeskini@sophia.inria.fr>
 - Cleanup a specfile.
