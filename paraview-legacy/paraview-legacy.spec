@@ -114,9 +114,7 @@ Requires:       python2-autobahn
 Requires:       python2-numpy
 Requires:       python2-twisted
 %endif
-%if 0%{?rhel} && 0%{?rhel} <= 7
 Requires:       protobuf
-%endif
 
 Obsoletes:      paraview-demos < 3.2.1-4
 
