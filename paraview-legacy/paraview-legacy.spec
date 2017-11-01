@@ -42,7 +42,7 @@
 
 Name:           paraview-legacy
 Version:        %{pv_majmin}.%{pv_patch}
-Release:        1%{?rcver:.%rcver}%{?dist}
+Release:        2%{?rcver:.%rcver}%{?dist}
 Summary:        Parallel visualization application (legacy OpenGL backend)
 
 License:        BSD
@@ -185,6 +185,7 @@ Provides: bundled(xdmf2)
         -DVTK_INSTALL_PACKAGE_DIR=share/cmake/paraview \\\
         -DVTK_PYTHON_SETUP_ARGS="--prefix=/usr --root=%{buildroot}" \\\
         -DVTK_RENDERING_BACKEND:STRING=OpenGL \\\
+	-DVTK_LEGACY_SILENT:BOOL=ON \\\
         -DVTK_USE_OGGTHEORA_ENCODER:BOOL=ON \\\
         -DVTK_USE_SYSTEM_LIBRARIES=ON \\\
 %if 0%{?rhel} && 0%{?rhel} <= 7 \
