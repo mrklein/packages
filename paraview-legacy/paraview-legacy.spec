@@ -605,6 +605,9 @@ update-mime-database \
 
 
 %changelog
+* Mon Nov 2 2017 Alexey Matveichev <alexey@matveichev.com> 5.4.1-2
+- Added VTK_LEGACY_SILENT flag to suppress legacy warnings
+
 * Sat Oct 28 2017 Alexey Matveichev <alexey@matveichev.com> 5.4.1-1
 - Update to 5.4.1
 
