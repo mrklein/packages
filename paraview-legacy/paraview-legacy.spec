@@ -386,7 +386,7 @@ developing applications that use %{name}-mpich.
 
 
 %prep
-%autosetup -q -n ParaView-v%{version}%{?rcver:-%rcver}
+%autosetup -n ParaView-v%{version}%{?rcver:-%rcver}
 
 %if %{with VisitBridge}
 cp -p Utilities/VisItBridge/README.md Utilities/VisItBridge/README-VisItBridge.md
