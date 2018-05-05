@@ -9,6 +9,13 @@
 %global pv_majmin %{pv_maj}.%{pv_min}
 #global rcver RC3
 
+# Python2 prefix for building on rhel
+%if 0%{?rhel}
+%global py2_prefix python
+%else
+%global py2_prefix python2
+%endif
+
 # VTK currently is carrying local modifications to gl2ps
 %bcond_with gl2ps
 %if !%{with gl2ps}
@@ -42,13 +49,16 @@
 
 Name:           paraview-legacy
 Version:        %{pv_majmin}.%{pv_patch}
-Release:        2%{?rcver:.%rcver}%{?dist}
+Release:        3%{?rcver:.%rcver}%{?dist}
 Summary:        Parallel visualization application (legacy OpenGL backend)
 
 License:        BSD
 URL:            https://www.paraview.org/
 Source0:        https://www.paraview.org/files/v%{pv_majmin}/ParaView-v%{version}%{?rcver:-%rcver}.tar.gz
 Source1:        https://raw.githubusercontent.com/mrklein/packages/master/paraview-legacy/paraview.xml
+
+Patch0:		https://raw.githubusercontent.com/mrklein/packages/master/paraview-legacy/paraview-5.4.1-jsoncpp_184.patch
+Patch1:		https://raw.githubusercontent.com/mrklein/packages/master/paraview-legacy/paraview-5.4.1-fix_VisItBridge_builderror.patch
 
 %if 0%{?rhel} && 0%{?rhel} <= 7
 BuildRequires:  cmake3
@@ -605,6 +615,9 @@ update-mime-database \
 
 
 %changelog
+* Sat May 5 2018 Alexey Matveichev <alexey@matveichev.com> 5.4.1-3
+- Added patches, XML desktop file, and Python pieces from Fedora 28 SRPM
+
 * Mon Nov 2 2017 Alexey Matveichev <alexey@matveichev.com> 5.4.1-2
 - Added VTK_LEGACY_SILENT flag to suppress legacy warnings
 
