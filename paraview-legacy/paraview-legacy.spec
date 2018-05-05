@@ -386,7 +386,15 @@ developing applications that use %{name}-mpich.
 
 
 %prep
-%setup -q -n ParaView-v%{version}%{?rcver:-%rcver}
+%autosetup -q -n ParaView-v%{version}%{?rcver:-%rcver}
+
+%if %{with VisitBridge}
+cp -p Utilities/VisItBridge/README.md Utilities/VisItBridge/README-VisItBridge.md
+
+# See https://gitlab.kitware.com/paraview/paraview/issues/17456
+rm -f Utilities/VisItBridge/databases/readers/Vs/VsStaggeredField.C
+%endif
+
 # Install python properly
 sed -i -s '/VTK_INSTALL_PYTHON_USING_CMAKE/s/TRUE/FALSE/' CMakeLists.txt
 #Remove included thirdparty sources just to be sure
@@ -618,7 +626,7 @@ update-mime-database \
 * Sat May 5 2018 Alexey Matveichev <alexey@matveichev.com> 5.4.1-3
 - Added patches, XML desktop file, and Python pieces from Fedora 28 SRPM
 
-* Mon Nov 2 2017 Alexey Matveichev <alexey@matveichev.com> 5.4.1-2
+* Mon Oct 2 2017 Alexey Matveichev <alexey@matveichev.com> 5.4.1-2
 - Added VTK_LEGACY_SILENT flag to suppress legacy warnings
 
 * Sat Oct 28 2017 Alexey Matveichev <alexey@matveichev.com> 5.4.1-1
