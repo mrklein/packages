@@ -9,6 +9,5 @@
         <glob pattern="*.vtp" />
         <glob pattern="*.vts" />
         <glob pattern="*.vtu" />
-        <glob pattern="*.vtk" />
   </mime-type>
 </mime-info>

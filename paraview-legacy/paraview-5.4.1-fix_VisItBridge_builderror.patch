@@ -1,0 +1,10 @@
+--- a/Utilities/VisItBridge/databases/readers/Vs/CMakeLists.orig.txt	2017-08-18 15:39:19.000000000 +0200
++++ b/Utilities/VisItBridge/databases/readers/Vs/CMakeLists.txt	2018-02-20 18:53:07.863239861 +0100
+@@ -25,7 +25,6 @@
+   VsAttribute.C
+   VsFile.C
+   VsReader.C
+-  VsStaggeredField.C
+   HighOrderUnstructuredData.C
+   )
+ 
