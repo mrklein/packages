@@ -626,7 +626,7 @@ update-mime-database \
 * Sat May 5 2018 Alexey Matveichev <alexey@matveichev.com> 5.4.1-3
 - Added patches, XML desktop file, and Python pieces from Fedora 28 SRPM
 
-* Mon Oct 2 2017 Alexey Matveichev <alexey@matveichev.com> 5.4.1-2
+* Thu Nov 2 2017 Alexey Matveichev <alexey@matveichev.com> 5.4.1-2
 - Added VTK_LEGACY_SILENT flag to suppress legacy warnings
 
 * Sat Oct 28 2017 Alexey Matveichev <alexey@matveichev.com> 5.4.1-1
