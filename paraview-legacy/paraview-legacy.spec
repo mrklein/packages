@@ -52,7 +52,7 @@
 %global vtk_use_system_pugixml -DVTK_USE_SYSTEM_PUGIXML:BOOL=OFF
 %endif
 
-Name:           paraview
+Name:           paraview-legacy
 Version:        %{pv_majmin}.%{pv_patch}
 Release:        3%{?relsuf}%{?dist}
 Summary:        Parallel visualization application
