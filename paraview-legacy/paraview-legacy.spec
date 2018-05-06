@@ -7,7 +7,9 @@
 %global pv_min 4
 %global pv_patch 1
 %global pv_majmin %{pv_maj}.%{pv_min}
-#global rcver RC3
+#global rcsuf rc3
+%{?rcsuf:%global relsuf .%{rcsuf}}
+%{?rcsuf:%global versuf -%{rcsuf}}
 
 # Python2 prefix for building on rhel
 %if 0%{?rhel}
@@ -22,8 +24,11 @@
 %global vtk_use_system_gl2ps -DVTK_USE_SYSTEM_GL2PS:BOOL=OFF
 %endif
 
+# Enable VisitBridge plugin (bz#1546474)
+%bcond_without VisitBridge
+
 # We need jsoncpp >= 0.7
-%if ( 0%{?fedora} && 0%{?fedora} >= 25 ) || 0%{?rhel} >= 8
+%if 0%{?fedora} || 0%{?rhel} >= 8
 %global system_jsoncpp 1
 %global vtk_use_system_jsoncpp -DVTK_USE_SYSTEM_JSONCPP:BOOL=ON
 %else
@@ -47,18 +52,18 @@
 %global vtk_use_system_pugixml -DVTK_USE_SYSTEM_PUGIXML:BOOL=OFF
 %endif
 
-Name:           paraview-legacy
+Name:           paraview
 Version:        %{pv_majmin}.%{pv_patch}
-Release:        3%{?rcver:.%rcver}%{?dist}
-Summary:        Parallel visualization application (legacy OpenGL backend)
+Release:        3%{?relsuf}%{?dist}
+Summary:        Parallel visualization application
 
 License:        BSD
-URL:            https://www.paraview.org/
-Source0:        https://www.paraview.org/files/v%{pv_majmin}/ParaView-v%{version}%{?rcver:-%rcver}.tar.gz
+URL:            http://www.paraview.org/
+Source0:        http://www.paraview.org/files/v%{pv_majmin}/ParaView-v%{version}%{?versuf}.tar.gz
 Source1:        https://raw.githubusercontent.com/mrklein/packages/master/paraview-legacy/paraview.xml
 
-Patch0:		https://raw.githubusercontent.com/mrklein/packages/master/paraview-legacy/paraview-5.4.1-jsoncpp_184.patch
-Patch1:		https://raw.githubusercontent.com/mrklein/packages/master/paraview-legacy/paraview-5.4.1-fix_VisItBridge_builderror.patch
+Patch0:         https://raw.githubusercontent.com/mrklein/packages/master/paraview-legacy/%{name}-%{version}-jsoncpp_184.patch
+Patch1:         https://raw.githubusercontent.com/mrklein/packages/master/paraview-legacy/%{name}-%{version}-fix_VisItBridge_builderror.patch
 
 %if 0%{?rhel} && 0%{?rhel} <= 7
 BuildRequires:  cmake3
@@ -68,10 +73,18 @@ BuildRequires:  cmake
 BuildRequires:  qt-assistant-adp-devel
 %endif
 BuildRequires:  lz4-devel
+%if %{with qt5}
+BuildRequires:  cmake(Qt5)
+BuildRequires:  cmake(Qt5UiPlugin)
+BuildRequires:  cmake(Qt5X11Extras)
+BuildRequires:  qt5-qtwebkit-devel
+BuildRequires:  %{py2_prefix}-qt5
+%else
 BuildRequires:  qt-devel
 BuildRequires:  qt-webkit-devel
+%endif
 BuildRequires:  mesa-libOSMesa-devel
-BuildRequires:  python-devel, tk-devel, hdf5-devel
+BuildRequires:  %{py2_prefix}-devel, tk-devel, hdf5-devel
 BuildRequires:  cgnslib-devel
 # Fails looking for PythonQt_QtBindings.h
 # https://gitlab.kitware.com/paraview/paraview/issues/17365
@@ -110,21 +123,15 @@ BuildRequires:  desktop-file-utils
 BuildRequires:  libappstream-glib
 %endif
 
-Requires:       hdf5 = %{_hdf5_version}
-Requires:       %{name}-data = %{version}-%{release}
-Requires:       python-pygments
-Requires:       python-six
-Requires:       python-pygments
-Requires:       python-six
-%if 0%{?rhel} && 0%{?rhel} <= 7
-Requires:       numpy
-Requires:       python-twisted-core
-%else
-Requires:       python2-autobahn
-Requires:       python2-numpy
-Requires:       python2-twisted
-%endif
-Requires:       protobuf
+Requires: hdf5%{?_hdf5_version: = %{_hdf5_version}}
+Requires: %{name}-data = %{version}-%{release}
+Requires: %{py2_prefix}-pygments
+Requires: %{py2_prefix}-six
+%{?fedora:Requires: python2-numpy}
+%{?rhel:Requires: numpy}
+Requires: %{py2_prefix}-twisted
+Requires: %{py2_prefix}-autobahn
+Requires: qt5-qtx11extras%{?_isa}
 
 Obsoletes:      paraview-demos < 3.2.1-4
 
@@ -169,7 +176,11 @@ Provides: bundled(xdmf2)
 %global __provides_exclude_from ^(%{_libdir}/paraview/|%{_libdir}/.*/lib/paraview/).*$
 # Do not require anything provided in paraview's library directory
 # This list needs to be maintained by hand
-%global __requires_exclude ^lib(IceT|QtTesting|vtk%{!?_with_protobuf:|protobuf}).*$
+%if %{with protobuf}
+%global __requires_exclude ^lib(IceT|QtTesting|vtk).*$
+%else
+%global __requires_exclude ^lib(IceT|QtTesting|vtk|protobuf).*$
+%endif
 
 
 #-- Plugin: VRPlugin - Virtual Reality Devices and Interactor styles : Disabled - Requires VRPN
@@ -179,7 +190,7 @@ Provides: bundled(xdmf2)
 
 # We want to build with a system vtk someday, but it doesn't work yet
 # -DUSE_EXTERNAL_VTK:BOOL=ON \\\
-# -DVTK_DIR=%{_libdir}/vtk \\\
+# -DVTK_DIR=%%{_libdir}/vtk \\\
 
 %global paraview_cmake_options \\\
         -DCMAKE_BUILD_TYPE=RelWithDebInfo \\\
@@ -187,7 +198,11 @@ Provides: bundled(xdmf2)
         -DPARAVIEW_BUILD_PLUGIN_AdiosReader:BOOL=ON \\\
         -DPARAVIEW_BUILD_PLUGIN_EyeDomeLighting:BOOL=ON \\\
         -DPARAVIEW_ENABLE_PYTHON:BOOL=ON \\\
-        -DPARAVIEW_QT_VERSION:STRING="4" \\\
+%if %{with VisitBridge} \
+        -DPARAVIEW_USE_VISITBRIDGE=ON \\\
+        -DVTK_USE_SYSTEM_VISITLIB:BOOL=OFF \\\
+        -DVISIT_BUILD_READER_CGNS=ON \\\
+%endif \
         -DPARAVIEW_WWW_DIR=%{buildroot}%{_pkgdocdir} \\\
         -DPYTHONQT_DIR=/usr \\\
         -DVTK_CUSTOM_LIBRARY_SUFFIX="" \\\
@@ -195,14 +210,10 @@ Provides: bundled(xdmf2)
         -DVTK_INSTALL_PACKAGE_DIR=share/cmake/paraview \\\
         -DVTK_PYTHON_SETUP_ARGS="--prefix=/usr --root=%{buildroot}" \\\
         -DVTK_RENDERING_BACKEND:STRING=OpenGL \\\
-	-DVTK_LEGACY_SILENT:BOOL=ON \\\
+        -DVTK_LEGACY_SILENT:BOOL=ON \\\
         -DVTK_USE_OGGTHEORA_ENCODER:BOOL=ON \\\
         -DVTK_USE_SYSTEM_LIBRARIES=ON \\\
-%if 0%{?rhel} && 0%{?rhel} <= 7 \
-        -DVTK_USE_SYSTEM_AUTOBAHN:BOOL=OFF \\\
-%else \
         -DVTK_USE_SYSTEM_AUTOBAHN:BOOL=ON \\\
-%endif \
         -DVTK_USE_SYSTEM_HDF5=ON \\\
         -DVTK_USE_SYSTEM_LIBHARU=OFF \\\
         %{?vtk_use_system_gl2ps} \\\
@@ -235,22 +246,23 @@ Provides: bundled(xdmf2)
         -DQtTesting_INSTALL_CMAKE_DIR=lib/paraview/CMake \\\
         -DPARAVIEW_USE_MPI:BOOL=ON \\\
         -DICET_BUILD_TESTING:BOOL=ON \\\
+%if %{with VisitBridge} \
+        -DPARAVIEW_USE_VISITBRIDGE=ON \\\
+        -DVTK_USE_SYSTEM_VISITLIB:BOOL=OFF \\\
+        -DVISIT_BUILD_READER_CGNS=ON \\\
+%endif \
         %{paraview_cmake_options}
 
 %description
-ParaView is an application designed with the need to visualize large data
-sets in mind. The goals of the ParaView project include the following:
+ParaView is an open-source, multi-platform data analysis and visualization
+application. ParaView users can quickly build visualizations to analyze their
+data using qualitative and quantitative techniques. The data exploration can
+be done interactively in 3D or programmatically using ParaView’s batch
+processing capabilities.
 
-    * Develop an open-source, multi-platform visualization application.
-    * Support distributed computation models to process large data sets.
-    * Create an open, flexible, and intuitive user interface.
-    * Develop an extensible architecture based on open standards.
-
-ParaView runs on distributed and shared memory parallel as well as single
-processor systems and has been successfully tested on Windows, Linux and
-various Unix workstations and clusters. Under the hood, ParaView uses the
-Visualization Toolkit as the data processing and rendering engine and has a
-user interface written using a unique blend of Tcl/Tk and C++.
+ParaView was developed to analyze extremely large datasets using distributed
+memory computing resources. It can be run on supercomputers to analyze
+datasets of petascale size as well as on laptops for smaller data.
 
 NOTE: The version in this package has NOT been compiled with MPI support.
 %if %{build_openmpi}
@@ -289,17 +301,14 @@ Summary:        Documentation files for ParaView
 BuildRequires:  doxygen
 BuildRequires:  graphviz
 BuildRequires:  hardlink
-BuildRequires:  python2-devel
-%if 0%{?rhel} && 0%{?rhel} <= 7
-BuildRequires:  numpy
-BuildRequires:  python-sphinx
-BuildRequires:  python-twisted-core
-%else
-BuildRequires:  python2-autobahn
-BuildRequires:  python2-numpy
-BuildRequires:  python2-sphinx
-BuildRequires:  python2-twisted
-%endif
+BuildRequires:  %{py2_prefix}-devel
+%{?fedora:BuildRequires: python2-numpy}
+%{?rhel:BuildRequires: numpy}
+BuildRequires:  %{py2_prefix}-sphinx
+
+# Unavailable on rhel
+BuildRequires:  %{py2_prefix}-twisted
+BuildRequires:  %{py2_prefix}-autobahn
 
 BuildArch:      noarch
 
@@ -317,11 +326,12 @@ BuildRequires:  netcdf-openmpi-devel
 
 Requires:       %{name}-data = %{version}-%{release}
 Requires:       mpi4py-openmpi
-Requires:       python-pygments
-Requires:       python-six
-Requires:       python2-autobahn
-Requires:       python2-numpy
-Requires:       python2-twisted
+Requires:       %{py2_prefix}-pygments
+Requires:       %{py2_prefix}-six
+%{?fedora:Requires: python2-numpy}
+%{?rhel:Requires: numpy}
+Requires:       %{py2_prefix}-twisted
+Requires:       %{py2_prefix}-autobahn
 
 Obsoletes:      %{name}-mpi < 3.6.2-5
 
@@ -355,11 +365,12 @@ BuildRequires:  netcdf-mpich-devel
 
 Requires:       %{name}-data = %{version}-%{release}
 Requires:       mpi4py-mpich
-Requires:       python-pygments
-Requires:       python-six
-Requires:       python2-autobahn
-Requires:       python2-numpy
-Requires:       python2-twisted
+Requires:       %{py2_prefix}-pygments
+Requires:       %{py2_prefix}-six
+%{?fedora:Requires: python2-numpy}
+%{?rhel:Requires: numpy}
+Requires:       %{py2_prefix}-twisted
+Requires:       %{py2_prefix}-autobahn
 
 Obsoletes:      %{name}-mpich2 < 3.98.1-6
 
@@ -386,7 +397,7 @@ developing applications that use %{name}-mpich.
 
 
 %prep
-%autosetup -n ParaView-v%{version}%{?rcver:-%rcver}
+%autosetup -n ParaView-v%{version}%{?versuf} -p 1
 
 %if %{with VisitBridge}
 cp -p Utilities/VisItBridge/README.md Utilities/VisItBridge/README-VisItBridge.md
@@ -405,13 +416,10 @@ done
 %if %{system_pugixml}
 rm ThirdParty/pugixml/pugixml.*
 %endif
-for x in vtkexpat vtkfreetype %{?_with_gl2ps:vtkgl2ps} vtkhdf5 vtkjpeg vtklibxml2 vtklz4 vtkmpi4py vtknetcdf{,cpp} vtkoggtheora vtkpng vtksqlite vtktiff vtkTwisted vtkzlib vtkZopeInterface
+for x in autobahn vtkexpat vtkfreetype %{?_with_gl2ps:vtkgl2ps} vtkhdf5 vtkjpeg vtklibxml2 vtklz4 vtkmpi4py vtknetcdf{,cpp} vtkoggtheora vtkpng vtksqlite vtktiff vtkTwisted vtkzlib vtkZopeInterface
 do
   rm -r VTK/ThirdParty/*/${x}
 done
-%if 0%{?fedora} || 0%{?rhel} >= 8
-rm -r VTK/ThirdParty/*/autobahn
-%endif
 # jsoncpp
 %if 0%{system_jsoncpp}
 rm -r VTK/ThirdParty/jsoncpp/vtkjsoncpp
@@ -423,7 +431,6 @@ find VTK/Utilities/KWSys/vtksys/ -name \*.[ch]\* | grep -vE '^VTK/Utilities/KWSy
 sed -i -e 's/-Wl,--fatal-warnings//' VTK/CMake/vtkCompilerExtras.cmake
 # We want to build with a system vtk someday, but it doesn't work yet
 #rm -r VTK
-
 
 %build
 mkdir %{_target_platform}
@@ -485,20 +492,39 @@ install -d %{buildroot}%{_datadir}/mime/packages
 install -m644 %SOURCE1 %{buildroot}%{_datadir}/mime/packages
 
 %if %{build_openmpi}
+%{_openmpi_load}
+
 # Install openmpi version
 %make_install -C %{_target_platform}-openmpi
 
-
 #Remove mpi copy of doc and man pages and  data
 rm -rf %{buildroot}%{_libdir}/openmpi/share/{appdata,applications,doc,icons,man,paraview}
+
+# Fix Python2 script
+sed -i "1 s|^#!/usr/bin/env python\b|#!%{__python2}|" %{buildroot}%{_libdir}/openmpi/lib/paraview/site-packages/vtk/web/launcher.py
+chmod 0755 %{buildroot}$MPI_LIB/paraview/site-packages/vtk/web/launcher.py
+
+# Fix shell script permissions
+chmod 0755 %{buildroot}%{_libdir}/openmpi/share/cmake/paraview/pre-commit
+%{_openmpi_unload}
 %endif
 
 %if %{build_mpich}
+%{_mpich_load}
+
 # Install mpich version
 %make_install -C %{_target_platform}-mpich
 
 #Remove mpi copy of doc and man pages and data
 rm -rf %{buildroot}%{_libdir}/mpich/share/{appdata,applications,doc,icons,man,paraview}
+
+# Fix Python2 script
+sed -i "1 s|^#!/usr/bin/env python\b|#!%{__python2}|" %{buildroot}%{_libdir}/mpich/lib/paraview/site-packages/vtk/web/launcher.py
+chmod 0755 %{buildroot}$MPI_LIB/paraview/site-packages/vtk/web/launcher.py
+
+# Fix shell script permissions
+chmod 0755 %{buildroot}%{_libdir}/mpich/share/cmake/paraview/pre-commit
+%{_mpich_unload}
 %endif
 
 #Install the normal version
@@ -511,7 +537,13 @@ appstream-util validate-relax --nonet %{buildroot}/%{_datadir}/appdata/*.appdata
 
 #Cleanup only vtk conflicting binaries
 rm %{buildroot}%{_bindir}/vtk{EncodeString,HashSource,LegacyColorMapXMLToJSON,ParseJava,Wrap{Hierarchy,Java,Python,Tcl}}*
-rm -f %{buildroot}%{_bindir}/vtkParseOGLExt
+
+# Fix Python2 script
+sed -i "1 s|^#!/usr/bin/env python\b|#!%{__python2}|" %{buildroot}%{_libdir}/paraview/site-packages/vtk/web/launcher.py
+chmod 0755 %{buildroot}%{_libdir}/paraview/site-packages/vtk/web/launcher.py
+
+# Fix shell script permissions
+chmod 0755 %{buildroot}%{_datadir}/cmake/paraview/pre-commit
 
 # Strip build dir from VTKConfig.cmake (bug #917425)
 find %{buildroot} -name VTKConfig.cmake | xargs sed -i -e '/builddir/s/^/#/'
@@ -525,12 +557,13 @@ find %{buildroot}%{_pkgdocdir} -name '.*' -print0 | xargs -0 rm -frv
 find %{buildroot}%{_pkgdocdir} -name '*.map' -or -name '*.md5' -print -delete
 hardlink -cfv %{buildroot}%{_pkgdocdir}
 
-
+%if 0%{?rhel} && 0%{?rhel} <= 7
 %post
 update-desktop-database &> /dev/null ||:
 
 %postun
 update-desktop-database &> /dev/null ||:
+%endif
 
 %pre
 #Handle changing from directory to file
@@ -538,7 +571,7 @@ if [ -d %{_libdir}/paraview/paraview ]; then
   rm -r %{_libdir}/paraview/paraview
 fi
 
-
+%if 0%{?rhel} && 0%{?rhel} <= 7
 %post data
 /bin/touch --no-create %{_datadir}/mime/packages &>/dev/null || :
 /bin/touch --no-create %{_datadir}/icons/hicolor &>/dev/null || :
@@ -551,18 +584,15 @@ if [ $1 -eq 0 ] ; then
 fi
 
 %posttrans data
-update-mime-database \
-%if 0%{?fedora} || 0%{?rhel} >= 8
--n \
-%endif
-%{_datadir}/mime &> /dev/null || :
+update-mime-database %{_datadir}/mime &> /dev/null || :
 /usr/bin/gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
-
+%endif
 
 %files
 %license Copyright.txt License_v1.2.txt
 %doc %dir %{_pkgdocdir}
 %doc %{_pkgdocdir}/README.md
+%doc Utilities/VisItBridge/README-VisItBridge.md
 %{_bindir}/paraview
 %{_bindir}/pvbatch
 # Currently disabled upstream
@@ -597,6 +627,7 @@ update-mime-database \
 %license %{_datadir}/licenses/%{name}*
 %doc %dir %{_pkgdocdir}
 %doc %{_pkgdocdir}/README.md
+%doc Utilities/VisItBridge/README-VisItBridge.md
 %{_libdir}/openmpi/bin/[ps]*
 %{_libdir}/openmpi/lib/paraview/
 
@@ -612,6 +643,7 @@ update-mime-database \
 %license %{_datadir}/licenses/%{name}*
 %doc %dir %{_pkgdocdir}
 %doc %{_pkgdocdir}/README.md
+%doc Utilities/VisItBridge/README-VisItBridge.md
 %{_libdir}/mpich/bin/[ps]*
 %{_libdir}/mpich/lib/paraview/
 
@@ -623,14 +655,62 @@ update-mime-database \
 
 
 %changelog
-* Sat May 5 2018 Alexey Matveichev <alexey@matveichev.com> 5.4.1-3
-- Added patches, XML desktop file, and Python pieces from Fedora 28 SRPM
+* Wed Mar 07 2018 Antonio Trande <sagitter@fedoraproject.org> - 5.4.1-15
+- Add qt5-qtx11extras request
 
-* Thu Nov 2 2017 Alexey Matveichev <alexey@matveichev.com> 5.4.1-2
-- Added VTK_LEGACY_SILENT flag to suppress legacy warnings
+* Thu Feb 22 2018 Antonio Trande <sagitter@fedoraproject.org> - 5.4.1-14
+- Fix Python2 scripts
 
-* Sat Oct 28 2017 Alexey Matveichev <alexey@matveichev.com> 5.4.1-1
+* Tue Feb 20 2018 Antonio Trande <sagitter@fedoraproject.org> - 5.4.1-13
+- Enable VisitBridge support (bz#1546474)
+- Patched for building VisItBridge plugin
+
+* Mon Feb 19 2018 Antonio Trande <sagitter@fedoraproject.org> - 5.4.1-12
+- Rebuild for hdf5-1.8.20
+- Remove obsolete scriptlets
+
+* Fri Feb 09 2018 Igor Gnatenko <ignatenkobrain@fedoraproject.org> - 5.4.1-11
+- Escape macros in %%changelog
+
+* Thu Feb 08 2018 Fedora Release Engineering <releng@fedoraproject.org> - 5.4.1-10
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_28_Mass_Rebuild
+
+* Sun Jan 14 2018 Björn Esser <besser82@fedoraproject.org> - 5.4.1-9
+- Update patch for jsoncpp-1.8.4 with upstreamed version
+- Fix warnings when building local srpm
+
+* Sun Jan 14 2018 Björn Esser <besser82@fedoraproject.org> - 5.4.1-8
+- Add patch to fix build with jsoncpp-1.8.4
+
+* Tue Dec 26 2017 Björn Esser <besser82@fedoraproject.org> - 5.4.1-7
+- Rebuilt for jsoncpp.so.20
+
+* Wed Nov 29 2017 Igor Gnatenko <ignatenko@redhat.com> - 5.4.1-6
+- Rebuild for protobuf 3.5
+
+* Mon Nov 13 2017 Igor Gnatenko <ignatenkobrain@fedoraproject.org> - 5.4.1-5
+- Rebuild for protobuf 3.4
+
+* Fri Sep 01 2017 Björn Esser <besser82@fedoraproject.org> - 5.4.1-4
+- Fix 'Bad pre-release versioning scheme'
+
+* Fri Sep 01 2017 Björn Esser <besser82@fedoraproject.org> - 5.4.1-3.3
+- Rebuilt for jsoncpp-1.8.3
+
+* Mon Aug 28 2017 Orion Poplawski <orion@cora.nwra.com> - 5.4.1-3.2
 - Update to 5.4.1
+
+* Thu Aug 03 2017 Fedora Release Engineering <releng@fedoraproject.org> - 5.4.0-3.2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_27_Binutils_Mass_Rebuild
+
+* Thu Jul 27 2017 Fedora Release Engineering <releng@fedoraproject.org> - 5.4.0-3.1
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_27_Mass_Rebuild
+
+* Wed Jul 19 2017 Orion Poplawski <orion@cora.nwra.com> - 5.4.0-3
+- Fix protobuf requires filter (bug #1472770)
+
+* Wed Jul 5 2017 Orion Poplawski <orion@cora.nwra.com> - 5.4.0-2
+- Update description (bug #1467571)
 
 * Fri Jun 16 2017 Orion Poplawski <orion@cora.nwra.com> - 5.4.0-1
 - Update to 5.4.0
@@ -704,7 +784,7 @@ update-mime-database \
 - Update to 5.2.0-RC1
 - Drop patches merged by upstream
 - Add libjsoncpp_so_11.patch
-- Create data-dir, if not created by `%make_install`
+- Create data-dir, if not created by `%%make_install`
 - Drop %%clean-section
 - Clean trailing whitespaces
 
