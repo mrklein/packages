@@ -58,8 +58,8 @@ Release:        3%{?relsuf}%{?dist}
 Summary:        Parallel visualization application
 
 License:        BSD
-URL:            http://www.paraview.org/
-Source0:        http://www.paraview.org/files/v%{pv_majmin}/ParaView-v%{version}%{?versuf}.tar.gz
+URL:            https://www.paraview.org/
+Source0:        https://www.paraview.org/files/v%{pv_majmin}/ParaView-v%{version}%{?versuf}.tar.gz
 Source1:        https://raw.githubusercontent.com/mrklein/packages/master/paraview-legacy/paraview.xml
 
 Patch0:         https://raw.githubusercontent.com/mrklein/packages/master/paraview-legacy/%{name}-%{version}-jsoncpp_184.patch
