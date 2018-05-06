@@ -198,6 +198,7 @@ Provides: bundled(xdmf2)
         -DPARAVIEW_BUILD_PLUGIN_AdiosReader:BOOL=ON \\\
         -DPARAVIEW_BUILD_PLUGIN_EyeDomeLighting:BOOL=ON \\\
         -DPARAVIEW_ENABLE_PYTHON:BOOL=ON \\\
+	-DPARAVIEW_QT_VERSION:STRING="4" \\\
 %if %{with VisitBridge} \
         -DPARAVIEW_USE_VISITBRIDGE=ON \\\
         -DVTK_USE_SYSTEM_VISITLIB:BOOL=OFF \\\
