@@ -538,6 +538,7 @@ appstream-util validate-relax --nonet %{buildroot}/%{_datadir}/appdata/*.appdata
 
 #Cleanup only vtk conflicting binaries
 rm %{buildroot}%{_bindir}/vtk{EncodeString,HashSource,LegacyColorMapXMLToJSON,ParseJava,Wrap{Hierarchy,Java,Python,Tcl}}*
+rm -f %{buildroot}%{_bindir}/vtkParseOGLExt
 
 # Fix Python2 script
 sed -i "1 s|^#!/usr/bin/env python\b|#!%{__python2}|" %{buildroot}%{_libdir}/paraview/site-packages/vtk/web/launcher.py
