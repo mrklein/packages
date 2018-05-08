@@ -308,8 +308,10 @@ BuildRequires:  %{py2_prefix}-devel
 BuildRequires:  %{py2_prefix}-sphinx
 
 # Unavailable on rhel
+%if 0%{?fedora} || 0%{?rhel} >= 8
 BuildRequires:  %{py2_prefix}-twisted
 BuildRequires:  %{py2_prefix}-autobahn
+%endif
 
 BuildArch:      noarch
 
